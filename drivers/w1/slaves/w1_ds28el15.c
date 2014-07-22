@@ -97,20 +97,22 @@ static char special_values[2];
 static char rom_no[8];
 
 int verification = -1, id = 2, color;
+#ifdef CONFIG_SEC_H_PROJECT
+extern int verified;
+#endif
 
 #define READ_EOP_BYTE(seg) (32-seg*4)
 
-static char customer_secret[] = { 0x5C, 0x4B, 0x49, 0xB5, 0xFC, 0x00, 0x00, 0x00,
-									0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-									0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-									0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+static char w1_array[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 static u8 skip_setup = 1;	// for test if the chip did not have secret code, we would need to write temp secret value
 static u8 init_verify = 1;	// for inital verifying
 
 
-//module_param_array(customer_secret, char, NULL, 0);
-
+//module_param_array(w1_array, char, NULL, 0);
 //-----------------------------------------------------------------------------
 // ------ DS28EL15 Functions
 //-----------------------------------------------------------------------------
@@ -1023,6 +1025,8 @@ int w1_ds28el15_read_authverify(struct w1_slave *sl, int page_num, uchar *challe
 	if (!sl)
 		return -ENODEV;
 
+	if(w1_array[0] == 0)	return 0;
+
 	// check to see if we skip the read (use page_data)
 	if (!skipread)
 	{
@@ -1060,7 +1064,6 @@ int w1_ds28el15_read_authverify(struct w1_slave *sl, int page_num, uchar *challe
 	// have device compute mac
 	pbyte = anon ? 0xE0 : 0x00;
 	pbyte = pbyte | page_num;
-
 	while (i < RETRY_LIMIT) {
 		rslt = w1_ds28el15_compute_read_pageMAC(sl, pbyte, mac);
 		if (rslt == 0)
@@ -1438,6 +1441,25 @@ int w1_ds28el15_write_authblockprotection(struct w1_slave *sl, uchar *data)
 		return cs;
 }
 
+//-------------------------------------------------------------------------
+// get_array_value
+//
+static int __init get_array_value(char *str)
+{
+	int i, get[6];
+
+	pr_info("%s: W1 Read Array\n", __func__);
+
+	for(i=0;i<5;i++){
+		sscanf(str, "%x", &get[i]);
+		w1_array[i]=get[i];
+		str=str+3;
+	}
+	return 0;
+}
+__setup("array=", get_array_value);
+
+
 //--------------------------------------------------------------------------
 //  w1_ds28el15_verifymac
 //
@@ -1457,9 +1479,11 @@ int w1_ds28el15_verifymac(struct w1_slave *sl)
 #endif
 
 	// copy the secret code
-	memcpy(master_secret, customer_secret, 32); // Set temp_secret to the master secret
+	memcpy(master_secret, w1_array, 32); // Set temp_secret to the master secret
 
 	rt = 0;
+
+	if(w1_array[0] == 0)	goto success;
 
 	// Store the master secret and romid.
 	set_secret(master_secret);
@@ -1483,11 +1507,10 @@ int w1_ds28el15_verifymac(struct w1_slave *sl)
 	{
 		manid[0] = buf[3];
 		manid[1] = buf[2];
-	}
-
-	else {
+	} else {
 		pr_info("%s : read_status error\n", __func__);
 		rt = -1;
+		goto success;
 	}
 
 	// if you want to use random value, insert code here.
@@ -1510,7 +1533,7 @@ int w1_ds28el15_verifymac(struct w1_slave *sl)
 		rt = -1;
 	}
 
-
+success:
 	return rt;
 }
 
@@ -1522,7 +1545,7 @@ static int w1_ds28el15_setup_device(struct w1_slave *sl)
 	uchar master_secret[32];
 
 	// hard code master secret
-	memcpy(master_secret, customer_secret, 32); // Set temp_secret to the master secret
+	memcpy(master_secret, w1_array, 32); // Set temp_secret to the master secret
 
 	// ----- DS28EL25/DS28EL22/DS28EL15 Setup
 	printk(KERN_ERR "-------- DS28EL15 Setup Example\n");
@@ -1550,8 +1573,10 @@ static int w1_ds28el15_setup_device(struct w1_slave *sl)
 		manid[0] = buf[3];
 		manid[1] = buf[2];
 	}
-	else
+	else{
 		rt = -1;
+		goto end;
+	}
 	printk(KERN_ERR "result : %d\n",rslt);
 
 	printk(KERN_ERR "Read-Authenticate with unique secret\n");
@@ -1562,6 +1587,7 @@ static int w1_ds28el15_setup_device(struct w1_slave *sl)
 
 	printk(KERN_ERR "DS28EL15 Setup Example: %s\n",(rt) ? "FAIL" : "SUCCESS");
 	printk(KERN_ERR "--------------------------------------------------\n");
+end:
 	return rt;
 
 }
@@ -1579,7 +1605,7 @@ static int w1_ds28el15_application(struct w1_slave *sl)
 
 	// hard code master secret
 	for (i = 0; i < 32; i++)
-		master_secret[i] = customer_secret[i];  // Set master secret to temp_secret
+		master_secret[i] = w1_array[i];  // Set master secret to temp_secret
 
 	rt = 0;
 
@@ -1834,8 +1860,13 @@ static int w1_ds28el15_add_slave(struct w1_slave *sl)
 			printk(KERN_ERR "w1_ds28el15_verifymac\n");
 		}
 	}
-
-	w1_ds28el15_update_slave_info(sl);
+#ifdef CONFIG_SEC_H_PROJECT
+	pr_info("%s:verified(%d)", __func__, verified);
+	if(!verified)
+#else
+	if(!verification)
+#endif
+		w1_ds28el15_update_slave_info(sl);
 
 	printk(KERN_ERR "w1_ds28el15_add_slave end, skip_setup=%d, err=%d\n", skip_setup, err);
 	return err;
