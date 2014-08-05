@@ -1403,13 +1403,6 @@ config MACH_HLTEEUR
 	help
 	  Support for Samsung HLTEEUR device.
 	  
-config MACH_HLTECHNTWU
-	default n
-	bool "Samsung model HLTECHNTWU"
-	select SEC_H_PROJECT
-	help
-	  Support for Samsung HLTECHNTWU device.
-
 config MACH_H3G_CHN_OPEN
 	default n
 	bool "Samsung model H3G_CHN_OPEN"
@@ -1473,13 +1466,6 @@ config MACH_HLTEVZW
 	help
 	  Support for Samsung HLTEVZW device.
 
-config MACH_HLTEAUS
-	default n
-	bool "Samsung model HLTEAUS"
-	select SEC_H_PROJECT
-	help
-	  Support for Samsung HLTEAUS device.
-	  
 config SEC_F_PROJECT
 	default n
 	bool "Samsung F project"
@@ -1491,18 +1477,6 @@ config SEC_KS01_PROJECT
 	bool "Samsung KS01 project"
 	help
 	  Support for Samsung KS01 project.
-
-config SEC_JS_PROJECT
-	default n
-	bool "Samsung JS project"
-	help
-	  Support for Samsung JS project.
-
-config SEC_JSZT_PROJECT
-	default n
-	bool "Samsung JSZT project"
-	help
-	  Support for Samsung JSZT project.
 
 config MACH_H
 	default n
@@ -1593,38 +1567,6 @@ config SEC_LOCALE_KOR
 config SEC_LOCALE_KOR_H
 	default n
 	bool "Samsung H model KOREA"
-
-config SEC_LOCALE_JPN
-	default n
-	bool "Samsung model JPN"
-
-config MACH_HLTEDCM
-	default n
-	bool "Samsung model HLTEDCM"
-	select SEC_H_PROJECT
-	help
-	  Support for Samsung HLTEDCM device.
-
-config MACH_HLTEKDI
-	default n
-	bool "Samsung model HLTEKDI"
-	select SEC_H_PROJECT
-	help
-	  Support for Samsung HLTEKDI device.
-
-config MACH_JS01LTEDCM
-	default n
-	bool "Samsung model JS01LTEDCM"
-	select SEC_JS_PROJECT
-	help
-	  Support for Samsung JS01LTEDCM device.
-
-config MACH_JS01LTEZT
-	default n
-	bool "Samsung model JS01LTEZT"
-	select SEC_JSZT_PROJECT
-	help
-	  Support for Samsung JS01LTEZT device.
 
 config MACH_HLTESKT
 	default n
@@ -3546,11 +3488,6 @@ config SEC_SSR_DEBUG_LEVEL_CHK
         help
           To check the level of debug for SSR.
 
-config SEC_PERIPHERAL_SECURE_CHK
-        bool "PERIPHERAL SECURE check"
-        help
-          To check the authentication of peripheral image.
-
 config MSM_DCVS
 	bool "Use MSM DCVS for CPU/GPU Frequency control"
 	depends on MSM_SCM
@@ -3729,13 +3666,9 @@ config WALL_CLK_SYSFS
 
 config I2C_ACTUATOR
 	bool "support autofocus on camera without using cci"
-	depends on MSMB_CAMERA
-	help
+ 	depends on MSMB_CAMERA
+ 	help
 	actuator for camera.
-
-config SWITCH_DUAL_MODEM
-	default n
-	bool "Switch UART/USB to AP/CP/CP2"
 
 config TIMA_RKP
        bool "Enable RKP (Realtime Kernel Protection) TIMA feature"

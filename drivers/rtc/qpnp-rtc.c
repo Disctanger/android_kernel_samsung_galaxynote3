@@ -464,8 +464,6 @@ static void sapa_reboot(struct work_struct *work)
 }
 
 #ifdef CONFIG_RTC_AUTO_PWRON_PARAM
-static struct device *sapa_rtc_dev;
-static int qpnp_rtc0_resetbootalarm(struct device *dev);
 static void sapa_load_kparam(struct work_struct *work)
 {
 	int temp1, temp2, temp3;
@@ -490,8 +488,6 @@ static void sapa_load_kparam(struct work_struct *work)
 		rtc_time_to_tm( pwron_time, &sapa_saved_time.time );
 		print_time("[SAPA] saved_time", &sapa_saved_time.time, pwron_time);
 	}
-	/* Bug fix : USB cable or IRQ is disabled in LPM chg */
-	qpnp_rtc0_resetbootalarm(sapa_rtc_dev);
 }
 #endif
 
@@ -958,7 +954,6 @@ static int __devinit qpnp_rtc_probe(struct spmi_device *spmi)
 	}
 
 #ifdef CONFIG_RTC_AUTO_PWRON_PARAM
-	sapa_rtc_dev = rtc_dd->rtc_dev;
 	sapa_workq = create_singlethread_workqueue("pwron_alarm_resume");
 	if (sapa_workq == NULL) {
 		pr_err("[SAPA] pwron_alarm work creating failed (%d)\n", rc);
@@ -981,7 +976,7 @@ static int __devinit qpnp_rtc_probe(struct spmi_device *spmi)
 	if ( poweroff_charging ) {
 		INIT_DELAYED_WORK(&sapa_load_param, sapa_load_kparam);
 		INIT_DELAYED_WORK(&sapa_reboot_work, sapa_reboot);
-		queue_delayed_work(sapa_workq, &sapa_load_param, (15*HZ));
+		queue_delayed_work(sapa_workq, &sapa_load_param, (10*HZ));
 	}
 #endif
 	return 0;
@@ -999,12 +994,9 @@ static int qpnp_rtc_auto_pwron_resume(struct device *dev)
 {
 	struct qpnp_rtc *rtc_dd = dev_get_drvdata(dev);
 
-	if(rtc_dd->lpm_mode==1) {
-		pr_info("%s lpm mode, do not disable irq\n",__func__);
-	} else {
-		if (device_may_wakeup(dev))
-			disable_irq_wake(rtc_dd->rtc_alarm_irq);
-	}
+	if (device_may_wakeup(dev))
+		disable_irq_wake(rtc_dd->rtc_alarm_irq);
+
 	sapa_dev_suspend = 0;
 	qpnp_rtc0_resetbootalarm(dev);
 
@@ -1016,12 +1008,8 @@ static int qpnp_rtc_auto_pwron_suspend(struct device *dev)
 {
 	struct qpnp_rtc *rtc_dd = dev_get_drvdata(dev);
 
-	if(rtc_dd->lpm_mode==1) {
-		pr_info("%s lpm mode, no need to enable irq\n",__func__);
-	} else {
-		if (device_may_wakeup(dev))
-			enable_irq_wake(rtc_dd->rtc_alarm_irq);
-	}
+	if (device_may_wakeup(dev))
+		enable_irq_wake(rtc_dd->rtc_alarm_irq);
 	sapa_dev_suspend = 1;
 	pr_info("%s\n",__func__);
 	return 0;
